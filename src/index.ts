@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import { env } from './config/env';
 import { pool } from './config/db';
+import { runMigrations } from './config/migrate';
 import { pruneExpiredTokens } from './services/token.service';
 import { errorHandler, notFound } from './middleware/error.middleware';
 import authRoutes from './routes/auth.routes';
@@ -14,7 +15,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
-app.get('/health', (_req, res) => {
+app.get('/health', (_req: express.Request, res: express.Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
@@ -30,6 +31,10 @@ async function start() {
   // Verify DB connection
   await pool.query('SELECT 1');
   console.log('✓ PostgreSQL connected');
+
+  // Auto-run migrations on every startup (safe — uses IF NOT EXISTS)
+  await runMigrations();
+  console.log('✓ Migrations applied');
 
   // Start server
   app.listen(env.port, () => {

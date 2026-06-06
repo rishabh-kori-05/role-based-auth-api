@@ -1,5 +1,6 @@
 /**
  * Run with:  npm run db:migrate
+ * OR auto-called on server startup via runMigrations()
  * Creates all necessary tables if they don't already exist.
  */
 import { pool } from './db';
@@ -53,14 +54,22 @@ CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token    ON refresh_tokens(token);
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id  ON refresh_tokens(user_id);
 `;
 
+/** Exported for use in index.ts on server startup */
+export async function runMigrations(): Promise<void> {
+  await pool.query(SQL);
+}
+
+/** Standalone script: npm run db:migrate */
 async function migrate() {
   console.log('Running migrations…');
-  await pool.query(SQL);
+  await runMigrations();
   console.log('Migrations complete.');
   await pool.end();
 }
 
-migrate().catch((err) => {
-  console.error('Migration failed:', err);
-  process.exit(1);
-});
+if (require.main === module) {
+  migrate().catch((err) => {
+    console.error('Migration failed:', err);
+    process.exit(1);
+  });
+}
